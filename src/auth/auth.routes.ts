@@ -2,6 +2,7 @@ import { Router } from "express";
 import { authController } from "./auth.controller.js";
 import { validateBody } from "../middleware/validate.js";
 import { asyncHandler } from "../middleware/async-handler.js";
+import { authenticate } from "../middleware/authenticate.js";
 import { registerSchema, loginSchema } from "./auth.dto.js";
 
 /**
@@ -14,11 +15,13 @@ export const authRouter = Router();
 authRouter.post(
   "/register",
   validateBody(registerSchema),
-  asyncHandler(authController.register)
+  asyncHandler(authController.register),
 );
 
 authRouter.post(
   "/login",
   validateBody(loginSchema),
-  asyncHandler(authController.login)
+  asyncHandler(authController.login),
 );
+
+authRouter.get("/me", authenticate, asyncHandler(authController.me));

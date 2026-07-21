@@ -11,6 +11,7 @@ declare global {
     interface Request {
       id: string;
       log: Logger;
+      merchant?: { id: string; email: string };
     }
   }
 }

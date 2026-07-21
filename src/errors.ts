@@ -15,7 +15,12 @@ export class AppError extends Error {
   /** Optional extra info (e.g. per-field validation messages). */
   details?: unknown;
 
-  constructor(code: string, message: string, statusCode: number, details?: unknown) {
+  constructor(
+    code: string,
+    message: string,
+    statusCode: number,
+    details?: unknown,
+  ) {
     super(message);
     this.code = code;
     this.statusCode = statusCode;
@@ -27,7 +32,11 @@ export class AppError extends Error {
 /** 409 — email already registered. */
 export class EmailAlreadyExistsError extends AppError {
   constructor() {
-    super("email_already_registered", "A merchant with this email already exists", 409);
+    super(
+      "email_already_registered",
+      "A merchant with this email already exists",
+      409,
+    );
   }
 }
 
@@ -47,5 +56,23 @@ export class ValidationError extends AppError {
 export class InvalidCredentialsError extends AppError {
   constructor() {
     super("invalid_credentials", "Invalid email or password", 401);
+  }
+}
+
+export class UnauthorizedError extends AppError {
+  constructor(message = "Authentication required") {
+    super("unauthorized", message, 401);
+  }
+}
+
+export class InvalidTokenError extends AppError {
+  constructor() {
+    super("invalid_token", "Invalid authentication token", 401);
+  }
+}
+
+export class ExpiredTokenError extends AppError {
+  constructor() {
+    super("token_expired", "Authentication token has expired", 401);
   }
 }

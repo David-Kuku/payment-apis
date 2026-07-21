@@ -39,4 +39,14 @@ export const merchantRepository = {
     );
     return result.rows[0] ?? null;
   },
+
+  async findById(id: string): Promise<MerchantRow | null> {
+    const result = await query(
+      `SELECT id, email, password_hash, created_at, updated_at
+       FROM merchants
+       WHERE id = $1`,
+      [id],
+    );
+    return result.rows[0] ?? null;
+  },
 };

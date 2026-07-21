@@ -4,7 +4,7 @@ import {
 } from "../merchants/merchant.repository.js";
 import { hashPassword, verifyPassword } from "./password.js";
 import { signToken } from "./jwt.js";
-import { InvalidCredentialsError } from "../errors.js";
+import { InvalidCredentialsError, UnauthorizedError } from "../errors.js";
 import type {
   RegisterDto,
   LoginDto,
@@ -51,5 +51,13 @@ export const authService = {
     const token = signToken({ sub: merchant.id, email: merchant.email });
 
     return { token, merchant: toPublicMerchant(merchant) };
+  },
+
+  async getById(id: string): Promise<PublicMerchant> {
+    const merchant = await merchantRepository.findById(id);
+    if (!merchant) {
+      throw new UnauthorizedError("Account no longer exists");
+    }
+    return toPublicMerchant(merchant);
   },
 };

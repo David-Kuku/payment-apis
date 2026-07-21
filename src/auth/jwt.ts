@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import "dotenv/config";
+import { InvalidTokenError, ExpiredTokenError } from "../errors.js";
 
 /**
  * All JWT logic lives here. The rest of the app just calls signToken /
@@ -36,7 +37,14 @@ export function signToken(payload: AuthTokenPayload): string {
  * decides how to react to that.
  */
 export function verifyToken(token: string): AuthTokenPayload {
-  // jwt.verify also decodes iat/exp; we only care about our own claims here.
-  const decoded = jwt.verify(token, secret!) as jwt.JwtPayload;
-  return { sub: decoded.sub as string, email: decoded.email as string };
+  try {
+    // jwt.verify checks the signature AND expiry; throws if either fails.
+    const decoded = jwt.verify(token, secret!) as jwt.JwtPayload;
+    return { sub: decoded.sub as string, email: decoded.email as string };
+  } catch (err) {
+    if (err instanceof jwt.TokenExpiredError) {
+      throw new ExpiredTokenError();
+    }
+    throw new InvalidTokenError();
+  }
 }

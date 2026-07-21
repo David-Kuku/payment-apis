@@ -25,4 +25,8 @@ export const authController = {
     const result = await authService.login(dto);
     res.status(200).json(result);
   },
+  async me(req: Request, res: Response) {
+    const merchant = await authService.getById(req.merchant!.id);
+    res.status(200).json({ merchant });
+  },
 };
