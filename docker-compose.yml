@@ -1,0 +1,64 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: payment-app
+    restart: unless-stopped
+    # Load JWT_SECRET, PORT, etc. from your .env file...
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://payment:payment@postgres:5432/payment
+      NODE_ENV: development
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src
+      - ./migrations:/app/migrations
+
+  postgres:
+    image: postgres:16
+    container_name: payment-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: payment
+      POSTGRES_PASSWORD: payment
+      POSTGRES_DB: payment
+    ports:
+      # host:container -> we reach it at localhost:5432
+      - "5432:5432"
+    volumes:
+      # keeps data alive even if the container restarts
+      - payment_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payment"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: payment-pgadmin
+    restart: unless-stopped
+    environment:
+      # These are the login for the pgAdmin web UI itself (not the database).
+      PGADMIN_DEFAULT_EMAIL: psalmsgus99@gmail.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      # Skips a first-run wizard so it starts up cleaner.
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      # We open pgAdmin's web UI on localhost:5050 (its container listens on 80).
+      - "5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - payment_pgadmin:/var/lib/pgadmin
+
+volumes:
+  payment_pgdata:
+  payment_pgadmin:
