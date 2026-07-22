@@ -65,6 +65,17 @@ export class UnauthorizedError extends AppError {
   }
 }
 
+/** 409 — this merchant already has a wallet in this currency. */
+export class WalletAlreadyExistsError extends AppError {
+  constructor(currency: string) {
+    super(
+      "wallet_already_exists",
+      `A ${currency} wallet already exists for this merchant`,
+      409,
+    );
+  }
+}
+
 export class InvalidTokenError extends AppError {
   constructor() {
     super("invalid_token", "Invalid authentication token", 401);

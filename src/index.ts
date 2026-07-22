@@ -2,6 +2,7 @@ import express from "express";
 import "dotenv/config";
 import { query } from "./db.js";
 import { authRouter } from "./auth/auth.routes.js";
+import { walletRouter } from "./wallets/wallet.routes.js";
 import { errorHandler } from "./middleware/error-handler.js";
 import { requestLogger } from "./middleware/request-logger.js";
 import { logger } from "./logger.js";
@@ -18,6 +19,7 @@ app.use(express.json());
 // Mount the auth module. Everything in authRouter is prefixed with /auth,
 // so POST /register inside it becomes POST /auth/register.
 app.use("/auth", authRouter);
+app.use("/wallets", walletRouter);
 
 /**
  * A health check. Two jobs:
