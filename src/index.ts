@@ -3,6 +3,7 @@ import "dotenv/config";
 import { query } from "./db.js";
 import { authRouter } from "./auth/auth.routes.js";
 import { walletRouter } from "./wallets/wallet.routes.js";
+import { transferRouter } from "./transfers/transfer.routes.js";
 import { errorHandler } from "./middleware/error-handler.js";
 import { requestLogger } from "./middleware/request-logger.js";
 import { logger } from "./logger.js";
@@ -20,6 +21,7 @@ app.use(express.json());
 // so POST /register inside it becomes POST /auth/register.
 app.use("/auth", authRouter);
 app.use("/wallets", walletRouter);
+app.use("/transfers", transferRouter);
 
 /**
  * A health check. Two jobs:

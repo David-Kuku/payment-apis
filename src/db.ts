@@ -24,3 +24,39 @@ export const pool = new pg.Pool({
 export function query(text: string, params?: unknown[]) {
   return pool.query(text, params);
 }
+
+/**
+ * Something that can run a query: either the pool (auto-commit, one statement at
+ * a time) OR a single client that's inside a transaction. Repository methods
+ * accept an Executor so the SAME method works both standalone and inside a
+ * transaction.
+ */
+export type Executor = pg.Pool | pg.PoolClient;
+
+/**
+ * Run `fn` inside a single database transaction.
+ *
+ * It grabs one dedicated connection, issues BEGIN, runs your callback (passing
+ * the client so every query inside uses the SAME connection), then COMMITs. If
+ * your callback throws, it ROLLBACKs — so the whole unit of work is
+ * all-or-nothing. The connection is always returned to the pool at the end.
+ *
+ * Crucially: any row locks taken with SELECT ... FOR UPDATE are held until this
+ * transaction COMMITs or ROLLBACKs.
+ */
+export async function withTransaction<T>(
+  fn: (client: pg.PoolClient) => Promise<T>,
+): Promise<T> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const result = await fn(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}

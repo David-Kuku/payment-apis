@@ -76,6 +76,38 @@ export class WalletAlreadyExistsError extends AppError {
   }
 }
 
+/** 404 — a referenced wallet doesn't exist. `which` says source/destination. */
+export class WalletNotFoundError extends AppError {
+  constructor(which: string) {
+    super("wallet_not_found", `The ${which} wallet was not found`, 404);
+  }
+}
+
+/** 403 — the caller is authenticated but not allowed to do this. */
+export class ForbiddenError extends AppError {
+  constructor(message = "You are not allowed to perform this action") {
+    super("forbidden", message, 403);
+  }
+}
+
+/** 400 — the two wallets in a transfer are in different currencies. */
+export class CurrencyMismatchError extends AppError {
+  constructor() {
+    super(
+      "currency_mismatch",
+      "Cannot transfer between wallets of different currencies",
+      400,
+    );
+  }
+}
+
+/** 422 — the source wallet doesn't have enough balance for the transfer. */
+export class InsufficientFundsError extends AppError {
+  constructor() {
+    super("insufficient_funds", "The source wallet has insufficient funds", 422);
+  }
+}
+
 export class InvalidTokenError extends AppError {
   constructor() {
     super("invalid_token", "Invalid authentication token", 401);
