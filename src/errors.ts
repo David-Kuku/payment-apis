@@ -123,6 +123,38 @@ export class ConcurrencyConflictError extends AppError {
   }
 }
 
+/** 404 — the payment intent doesn't exist (or isn't this merchant's). */
+export class PaymentIntentNotFoundError extends AppError {
+  constructor() {
+    super("payment_intent_not_found", "Payment intent not found", 404);
+  }
+}
+
+/**
+ * 409 — an illegal state-machine transition was attempted, e.g. confirming an
+ * already-succeeded intent, or cancelling one that's terminal.
+ */
+export class InvalidStateTransitionError extends AppError {
+  constructor(from: string, action: string) {
+    super(
+      "invalid_state_transition",
+      `Cannot ${action} a payment intent in status "${from}"`,
+      409,
+    );
+  }
+}
+
+/** 422 — the merchant has no wallet in the payment's currency to receive into. */
+export class NoWalletForCurrencyError extends AppError {
+  constructor(currency: string) {
+    super(
+      "no_wallet_for_currency",
+      `You need a ${currency} wallet to accept payments in ${currency}`,
+      422,
+    );
+  }
+}
+
 /** 400 — a required Idempotency-Key header was missing. */
 export class IdempotencyKeyRequiredError extends AppError {
   constructor() {

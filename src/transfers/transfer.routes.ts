@@ -8,6 +8,8 @@ import { createTransferSchema } from "./transfer.dto.js";
 
 export const transferRouter = Router();
 
+// Pipeline: authenticate -> validate body -> idempotency guard -> controller.
+// idempotency runs after auth (needs req.merchant) and validation (needs body).
 transferRouter.post(
   "/",
   authenticate,

@@ -112,6 +112,20 @@ export const walletRepository = {
     return result.rowCount === 1;
   },
 
+  /** Find a merchant's wallet in a specific currency, or null. */
+  async findByMerchantAndCurrency(
+    merchantId: string,
+    currency: string,
+    exec: Executor = pool,
+  ): Promise<WalletRow | null> {
+    const result = await exec.query(
+      `SELECT ${WALLET_COLUMNS} FROM wallets
+       WHERE merchant_id = $1 AND currency = $2`,
+      [merchantId, currency],
+    );
+    return result.rows[0] ?? null;
+  },
+
   /** List all wallets owned by a merchant, oldest first. */
   async listByMerchant(merchantId: string): Promise<WalletRow[]> {
     const result = await query(

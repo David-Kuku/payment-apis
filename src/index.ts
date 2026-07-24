@@ -4,6 +4,7 @@ import { query } from "./db.js";
 import { authRouter } from "./auth/auth.routes.js";
 import { walletRouter } from "./wallets/wallet.routes.js";
 import { transferRouter } from "./transfers/transfer.routes.js";
+import { paymentRouter } from "./payments/payment.routes.js";
 import { errorHandler } from "./middleware/error-handler.js";
 import { requestLogger } from "./middleware/request-logger.js";
 import { logger } from "./logger.js";
@@ -22,6 +23,7 @@ app.use(express.json());
 app.use("/auth", authRouter);
 app.use("/wallets", walletRouter);
 app.use("/transfers", transferRouter);
+app.use("/payment-intents", paymentRouter);
 
 /**
  * A health check. Two jobs:

@@ -1,7 +1,7 @@
 import type { Executor } from "../db.js";
 
 type Direction = "debit" | "credit";
-type TransactionType = "deposit" | "transfer" | "withdrawal";
+type TransactionType = "deposit" | "transfer" | "withdrawal" | "charge";
 
 /**
  * The ledger repository: SQL for `transactions` and `ledger_entries`.
@@ -12,7 +12,10 @@ type TransactionType = "deposit" | "transfer" | "withdrawal";
  */
 export const ledgerRepository = {
   /** Create a transaction (the grouping) and return its id. */
-  async createTransaction(exec: Executor, type: TransactionType): Promise<string> {
+  async createTransaction(
+    exec: Executor,
+    type: TransactionType,
+  ): Promise<string> {
     const result = await exec.query(
       `INSERT INTO transactions (type) VALUES ($1) RETURNING id`,
       [type],
