@@ -7,7 +7,7 @@ export const transferController = {
   async create(req: Request, res: Response) {
     const dto = req.body as CreateTransferDto;
     // The caller's identity comes from the token; the service checks they own
-    // the source wallet.
+    // the source wallet. transfer() uses optimistic locking (see the service).
     const result = await transferService.transfer(req.merchant!.id, dto);
     res.status(201).json({ transfer: result });
   },

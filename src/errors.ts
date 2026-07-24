@@ -108,6 +108,21 @@ export class InsufficientFundsError extends AppError {
   }
 }
 
+/**
+ * 409 — an optimistic-locking version check failed: another transaction changed
+ * a wallet between our read and our write. Used to trigger a retry; if retries
+ * are exhausted it surfaces to the client as a 409.
+ */
+export class ConcurrencyConflictError extends AppError {
+  constructor() {
+    super(
+      "concurrency_conflict",
+      "The wallet was modified concurrently; please retry",
+      409,
+    );
+  }
+}
+
 export class InvalidTokenError extends AppError {
   constructor() {
     super("invalid_token", "Invalid authentication token", 401);
