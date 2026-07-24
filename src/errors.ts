@@ -123,6 +123,41 @@ export class ConcurrencyConflictError extends AppError {
   }
 }
 
+/** 400 — a required Idempotency-Key header was missing. */
+export class IdempotencyKeyRequiredError extends AppError {
+  constructor() {
+    super("idempotency_key_required", "An Idempotency-Key header is required", 400);
+  }
+}
+
+/**
+ * 422 — the same Idempotency-Key was reused with a DIFFERENT request body.
+ * That's a client bug: a key must identify exactly one operation.
+ */
+export class IdempotencyKeyReuseError extends AppError {
+  constructor() {
+    super(
+      "idempotency_key_reuse",
+      "This Idempotency-Key was already used with different parameters",
+      422,
+    );
+  }
+}
+
+/**
+ * 409 — a request with this Idempotency-Key is still being processed (the first
+ * one hasn't finished). The client should retry shortly.
+ */
+export class IdempotencyInProgressError extends AppError {
+  constructor() {
+    super(
+      "idempotency_in_progress",
+      "A request with this Idempotency-Key is already in progress",
+      409,
+    );
+  }
+}
+
 export class InvalidTokenError extends AppError {
   constructor() {
     super("invalid_token", "Invalid authentication token", 401);
