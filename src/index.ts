@@ -5,6 +5,7 @@ import { authRouter } from "./auth/auth.routes.js";
 import { walletRouter } from "./wallets/wallet.routes.js";
 import { transferRouter } from "./transfers/transfer.routes.js";
 import { paymentRouter } from "./payments/payment.routes.js";
+import { webhookRouter } from "./webhooks/webhook.routes.js";
 import { errorHandler } from "./middleware/error-handler.js";
 import { requestLogger } from "./middleware/request-logger.js";
 import { logger } from "./logger.js";
@@ -24,6 +25,27 @@ app.use("/auth", authRouter);
 app.use("/wallets", walletRouter);
 app.use("/transfers", transferRouter);
 app.use("/payment-intents", paymentRouter);
+app.use("/webhooks", webhookRouter);
+
+/**
+ * A DEV-ONLY test sink to receive webhook deliveries so we can watch them land.
+ * Add ?fail=1 to make it return 500, to demonstrate retries + dead-lettering.
+ * A real merchant would verify the X-Webhook-Signature here.
+ */
+app.post("/test/sink", (req, res) => {
+  req.log.info(
+    {
+      event: req.headers["x-webhook-event"],
+      signature: req.headers["x-webhook-signature"],
+      body: req.body,
+    },
+    "🪝 test sink received a webhook",
+  );
+  if (req.query.fail) {
+    return res.status(500).json({ ok: false });
+  }
+  res.status(200).json({ received: true });
+});
 
 /**
  * A health check. Two jobs:

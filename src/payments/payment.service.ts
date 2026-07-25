@@ -6,6 +6,7 @@ import {
 import { chargeRepository, type ChargeRow } from "./charge.repository.js";
 import { walletRepository } from "../wallets/wallet.repository.js";
 import { ledgerRepository } from "../ledger/ledger.repository.js";
+import { webhookService } from "../webhooks/webhook.service.js";
 import {
   PaymentIntentNotFoundError,
   InvalidStateTransitionError,
@@ -145,6 +146,16 @@ export const paymentService = {
         transactionId,
       });
       await paymentIntentRepository.updateStatus(client, intent.id, "succeeded");
+
+      // Emit the event INTO THE OUTBOX, in this same transaction. If the commit
+      // succeeds, the event is guaranteed saved; if it rolls back, no event is
+      // emitted. The worker delivers it afterwards.
+      await webhookService.emit(client, merchantId, "payment.succeeded", {
+        paymentIntentId: intent.id,
+        chargeId: charge.id,
+        amount: intent.amount,
+        currency: intent.currency,
+      });
 
       return {
         intent: toPublicIntent({ ...intent, status: "succeeded" }),

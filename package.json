@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "worker": "tsx watch src/webhook-worker.ts",
+    "worker:logs": "docker compose logs -f worker",
     "migrate": "tsx src/migrate.ts",
     "up": "docker compose up -d --build",
     "down": "docker compose down",

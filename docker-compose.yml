@@ -20,6 +20,28 @@ services:
       - ./src:/app/src
       - ./migrations:/app/migrations
 
+  # The webhook worker: same image as the app, but runs the worker entrypoint
+  # instead of the server. Shares the database; reaches the app over the Docker
+  # network at http://app:3000. This separate process IS the decoupling.
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: payment-worker
+    restart: unless-stopped
+    command: npm run worker
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://payment:payment@postgres:5432/payment
+      NODE_ENV: development
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src
+      - ./migrations:/app/migrations
+
   postgres:
     image: postgres:16
     container_name: payment-postgres
