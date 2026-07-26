@@ -10,15 +10,36 @@ services:
       - .env
     environment:
       DATABASE_URL: postgres://payment:payment@postgres:5432/payment
+      # Inside the network RabbitMQ is at host "rabbitmq", not localhost.
+      RABBITMQ_URL: amqp://payment:payment@rabbitmq:5672
       NODE_ENV: development
     ports:
       - "3000:3000"
     depends_on:
       postgres:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     volumes:
       - ./src:/app/src
       - ./migrations:/app/migrations
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: payment-rabbitmq
+    restart: unless-stopped
+    environment:
+      # guest is blocked from non-localhost connections, so we set our own user.
+      RABBITMQ_DEFAULT_USER: payment
+      RABBITMQ_DEFAULT_PASS: payment
+    ports:
+      - "5672:5672" # AMQP protocol (the app talks here)
+      - "15672:15672" # management web UI (you browse here)
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # The webhook worker: same image as the app, but runs the worker entrypoint
   # instead of the server. Shares the database; reaches the app over the Docker
@@ -37,6 +58,31 @@ services:
       NODE_ENV: development
     depends_on:
       postgres:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src
+      - ./migrations:/app/migrations
+
+  # RabbitMQ-based webhook worker (relay + consumer). Run this INSTEAD of the
+  # plain `worker` above — both drain the same outbox, so running both would
+  # deliver each event twice.
+  rabbit-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: payment-rabbit-worker
+    restart: unless-stopped
+    command: npm run rabbit:worker
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://payment:payment@postgres:5432/payment
+      RABBITMQ_URL: amqp://payment:payment@rabbitmq:5672
+      NODE_ENV: development
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     volumes:
       - ./src:/app/src

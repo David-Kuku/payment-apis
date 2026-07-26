@@ -71,6 +71,63 @@ export const webhookEventRepository = {
     return result.rows;
   },
 
+  /**
+   * RELAY phase 1 — CLAIM: atomically flip a batch of pending events to
+   * 'publishing' and return them. One statement, so it's a short auto-committed
+   * transaction — no lock is held afterwards. SKIP LOCKED lets multiple relays
+   * claim disjoint batches. The row is now hidden from other relays while we
+   * publish it (without holding a DB lock across the network call).
+   */
+  async claimForPublishing(limit: number): Promise<WebhookEventRow[]> {
+    const result = await query(
+      `UPDATE webhook_events SET status = 'publishing', updated_at = now()
+       WHERE id IN (
+         SELECT id FROM webhook_events
+         WHERE status = 'pending'
+         ORDER BY created_at
+         FOR UPDATE SKIP LOCKED
+         LIMIT $1
+       )
+       RETURNING id, merchant_id, endpoint_id, event_type, payload, status,
+                 attempts, next_attempt_at, last_error, created_at, updated_at`,
+      [limit],
+    );
+    return result.rows;
+  },
+
+  /** RELAY phase 3 — mark events as safely handed to the broker (confirmed). */
+  async markPublished(ids: string[]): Promise<void> {
+    await query(
+      `UPDATE webhook_events SET status = 'published', updated_at = now()
+       WHERE id = ANY($1)`,
+      [ids],
+    );
+  },
+
+  /** RELAY — put a claimed batch back to pending (broker didn't confirm). */
+  async resetToPending(ids: string[]): Promise<void> {
+    await query(
+      `UPDATE webhook_events SET status = 'pending', updated_at = now()
+       WHERE id = ANY($1)`,
+      [ids],
+    );
+  },
+
+  /**
+   * RELAY reaper — reset rows stuck in 'publishing' longer than staleSeconds
+   * (a relay crashed mid-publish) back to 'pending' so they get retried.
+   * Returns how many were reaped.
+   */
+  async reapStalePublishing(staleSeconds: number): Promise<number> {
+    const result = await query(
+      `UPDATE webhook_events SET status = 'pending', updated_at = now()
+       WHERE status = 'publishing'
+         AND updated_at < now() - make_interval(secs => $1)`,
+      [staleSeconds],
+    );
+    return result.rowCount ?? 0;
+  },
+
   /** Delivery succeeded → terminal 'delivered'. */
   async markDelivered(id: string): Promise<void> {
     await query(
