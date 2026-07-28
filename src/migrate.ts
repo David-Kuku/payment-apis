@@ -1,75 +1,73 @@
 import { readdir, readFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
+import pg from "pg";
 import { pool } from "./db.js";
-
-/**
- * A minimal migration runner.
- *
- * The strategy:
- *   1. Keep a `schema_migrations` table that records the filename of every
- *      migration we've already applied.
- *   2. Look at every .sql file in /migrations, sorted by name (0001, 0002...).
- *   3. Run any that aren't recorded yet — each inside a TRANSACTION so that if
- *      the SQL fails halfway, nothing is left half-applied.
- */
 
 const migrationsDir = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
   "..",
-  "migrations"
+  "migrations",
 );
 
-async function migrate() {
-  // Step 1: make sure the bookkeeping table exists.
-  await pool.query(`
+/**
+ * Apply any un-applied migrations to the given pool. Extracted so both the CLI
+ * (dev DB) and the test harness (test DB) can run migrations against different
+ * databases.
+ */
+export async function runMigrations(targetPool: pg.Pool): Promise<void> {
+  await targetPool.query(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
       name       TEXT PRIMARY KEY,
       applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `);
 
-  // Which migrations have we already run?
-  const { rows } = await pool.query("SELECT name FROM schema_migrations");
+  const { rows } = await targetPool.query("SELECT name FROM schema_migrations");
   const applied = new Set(rows.map((r) => r.name));
 
-  // All .sql files, in order.
   const files = (await readdir(migrationsDir))
     .filter((f) => f.endsWith(".sql"))
     .sort();
 
   let ran = 0;
   for (const file of files) {
-    if (applied.has(file)) continue; // already done — skip
+    if (applied.has(file)) continue;
 
     const sql = await readFile(path.join(migrationsDir, file), "utf8");
-
-    // Grab a single dedicated connection so BEGIN/COMMIT stay together.
-    const client = await pool.connect();
+    const client = await targetPool.connect();
     try {
-      await client.query("BEGIN"); // start transaction
-      await client.query(sql); // run the migration's SQL
-      await client.query(
-        "INSERT INTO schema_migrations (name) VALUES ($1)",
-        [file]
-      );
-      await client.query("COMMIT"); // all-or-nothing: commit the whole thing
+      await client.query("BEGIN");
+      await client.query(sql);
+      await client.query("INSERT INTO schema_migrations (name) VALUES ($1)", [file]);
+      await client.query("COMMIT");
       console.log(`✅ applied ${file}`);
       ran++;
     } catch (err) {
-      await client.query("ROLLBACK"); // failure → undo everything in this file
+      await client.query("ROLLBACK");
       console.error(`❌ failed ${file}`);
       throw err;
     } finally {
-      client.release(); // give the connection back to the pool
+      client.release();
     }
   }
 
-  console.log(ran === 0 ? "Nothing to migrate — already up to date." : `Done. Ran ${ran} migration(s).`);
-  await pool.end(); // close the pool so the script exits cleanly
+  console.log(
+    ran === 0 ? "Nothing to migrate — already up to date." : `Done. Ran ${ran} migration(s).`,
+  );
 }
 
-migrate().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+async function main() {
+  await runMigrations(pool);
+  await pool.end();
+}
+
+// Only run the CLI when this file is executed directly (not when imported, e.g.
+// by the test harness which calls runMigrations against the test database).
+const isMain = import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isMain) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}
