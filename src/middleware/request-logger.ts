@@ -11,10 +11,18 @@ import { logger } from "../logger.js";
  *   3. Logs when the request arrives, and again when the response finishes,
  *      including the status code and how long it took.
  */
+// Noisy infra endpoints we don't want a log line for on every hit (health
+// checks and Prometheus scrapes fire constantly — that's noise, not signal).
+const SILENT_PATHS = new Set(["/health", "/metrics"]);
+
 export const requestLogger: RequestHandler = (req, res, next) => {
   const requestId = randomUUID();
   req.id = requestId;
   req.log = logger.child({ reqId: requestId });
+
+  // Still attach req.id/req.log above (downstream code relies on them), but skip
+  // the request-received/completed logging for silent paths.
+  if (SILENT_PATHS.has(req.path)) return next();
 
   // High-resolution start time so we can measure duration accurately.
   const start = process.hrtime.bigint();

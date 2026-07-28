@@ -55,6 +55,7 @@ services:
       - .env
     environment:
       DATABASE_URL: postgres://payment:payment@postgres:5432/payment
+      SERVICE_NAME: webhook-worker
       NODE_ENV: development
     depends_on:
       postgres:
@@ -78,6 +79,7 @@ services:
     environment:
       DATABASE_URL: postgres://payment:payment@postgres:5432/payment
       RABBITMQ_URL: amqp://payment:payment@rabbitmq:5672
+      SERVICE_NAME: rabbit-worker
       NODE_ENV: development
     depends_on:
       postgres:
