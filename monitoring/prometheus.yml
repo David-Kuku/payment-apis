@@ -1,0 +1,11 @@
+# How often Prometheus scrapes, and who it scrapes.
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  # Scrape our API's /metrics endpoint. "app:3000" is the API on the Docker
+  # network (same service-name rule as everything else).
+  - job_name: payment-api
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["app:3000"]

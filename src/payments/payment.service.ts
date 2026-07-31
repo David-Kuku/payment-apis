@@ -7,6 +7,7 @@ import { chargeRepository, type ChargeRow } from "./charge.repository.js";
 import { walletRepository } from "../wallets/wallet.repository.js";
 import { ledgerRepository } from "../ledger/ledger.repository.js";
 import { webhookService } from "../webhooks/webhook.service.js";
+import { paymentIntentsTotal } from "../metrics.js";
 import {
   PaymentIntentNotFoundError,
   InvalidStateTransitionError,
@@ -82,6 +83,7 @@ export const paymentService = {
       dto.currency,
       dto.customerReference,
     );
+    paymentIntentsTotal.inc({ event: "created" });
     return toPublicIntent(row);
   },
 
@@ -157,6 +159,7 @@ export const paymentService = {
         currency: intent.currency,
       });
 
+      paymentIntentsTotal.inc({ event: "confirmed" });
       return {
         intent: toPublicIntent({ ...intent, status: "succeeded" }),
         charge: toPublicCharge(charge),
@@ -177,6 +180,7 @@ export const paymentService = {
       assertTransition(intent.status, "canceled", "cancel");
       await paymentIntentRepository.updateStatus(client, intent.id, "canceled");
 
+      paymentIntentsTotal.inc({ event: "canceled" });
       return toPublicIntent({ ...intent, status: "canceled" });
     });
   },

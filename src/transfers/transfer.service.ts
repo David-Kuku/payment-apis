@@ -1,5 +1,6 @@
 import { withTransaction, type Executor } from "../db.js";
 import { logger } from "../logger.js";
+import { transfersCompletedTotal } from "../metrics.js";
 import {
   walletRepository,
   type WalletRow,
@@ -84,7 +85,7 @@ export const transferService = {
   ): Promise<TransferResult> {
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
-        return await withTransaction(async (client) => {
+        const result = await withTransaction(async (client) => {
           // Plain reads — no lock. We capture each wallet's current version.
           const fromRow = await walletRepository.findById(dto.fromWalletId, client);
           const toRow = await walletRepository.findById(dto.toWalletId, client);
@@ -125,6 +126,9 @@ export const transferService = {
             currency: from.currency,
           };
         });
+        // Reached only after the transaction COMMITs successfully.
+        transfersCompletedTotal.inc();
+        return result;
       } catch (err) {
         if (err instanceof ConcurrencyConflictError && attempt < MAX_RETRIES) {
           logger.warn(

@@ -129,6 +129,34 @@ services:
     volumes:
       - payment_pgadmin:/var/lib/pgadmin
 
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: payment-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - payment_prometheus_data:/prometheus
+    ports:
+      - "9090:9090" # Prometheus UI (check scrape targets, run PromQL)
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: payment-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - payment_grafana_data:/var/lib/grafana
+    ports:
+      - "3001:3000" # Grafana UI on localhost:3001 (3000 is our API)
+    depends_on:
+      - prometheus
+
 volumes:
   payment_pgdata:
   payment_pgadmin:
+  payment_prometheus_data:
+  payment_grafana_data:

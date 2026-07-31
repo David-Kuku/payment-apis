@@ -1,0 +1,10 @@
+apiVersion: 1
+
+# Auto-add Prometheus as a datasource on Grafana startup (no clicking around).
+datasources:
+  - name: Prometheus
+    uid: prometheus # fixed uid so our dashboard JSON can reference it
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true

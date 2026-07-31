@@ -8,6 +8,8 @@ import { paymentRouter } from "./payments/payment.routes.js";
 import { webhookRouter } from "./webhooks/webhook.routes.js";
 import { errorHandler } from "./middleware/error-handler.js";
 import { requestLogger } from "./middleware/request-logger.js";
+import { metricsMiddleware } from "./middleware/metrics.js";
+import { registry } from "./metrics.js";
 
 /**
  * Builds and returns the Express app WITHOUT starting a server. index.ts calls
@@ -17,6 +19,7 @@ import { requestLogger } from "./middleware/request-logger.js";
 export const app = express();
 
 app.use(requestLogger);
+app.use(metricsMiddleware);
 app.use(express.json());
 
 app.use("/auth", authRouter);
@@ -39,6 +42,12 @@ app.post("/test/sink", (req, res) => {
     return res.status(500).json({ ok: false });
   }
   res.status(200).json({ received: true });
+});
+
+/** Prometheus scrapes this — renders the registry in its text exposition format. */
+app.get("/metrics", async (_req, res) => {
+  res.set("Content-Type", registry.contentType);
+  res.end(await registry.metrics());
 });
 
 app.get("/health", async (_req, res) => {
