@@ -1,4 +1,5 @@
-import { Registry, Counter, Histogram, collectDefaultMetrics } from "prom-client";
+import { Registry, Counter, Histogram, Gauge, collectDefaultMetrics } from "prom-client";
+import { pool } from "./db.js";
 
 /**
  * All metrics register here. Prometheus scrapes /metrics, which renders this
@@ -43,4 +44,22 @@ export const paymentIntentsTotal = new Counter({
   help: "Payment intent lifecycle events",
   labelNames: ["event"], // created | confirmed | canceled
   registers: [registry],
+});
+
+// ── USE: the DB connection pool (a resource we contend for) ───────────────────
+// A GAUGE (goes up/down) with a `collect` callback that reads the live pool
+// numbers at SCRAPE time — so Prometheus always sees the current state:
+//   total   = connections the pool has open        (Utilization)
+//   idle    = open connections sitting unused
+//   waiting = requests QUEUED for a free connection (Saturation — the key one)
+export const dbPoolConnections = new Gauge({
+  name: "db_pool_connections",
+  help: "Postgres connection pool state",
+  labelNames: ["state"],
+  registers: [registry],
+  collect() {
+    this.set({ state: "total" }, pool.totalCount);
+    this.set({ state: "idle" }, pool.idleCount);
+    this.set({ state: "waiting" }, pool.waitingCount);
+  },
 });
