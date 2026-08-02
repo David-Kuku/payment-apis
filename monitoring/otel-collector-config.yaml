@@ -1,0 +1,49 @@
+# OpenTelemetry Collector — receives ALL spans from the apps, buffers whole
+# traces, then TAIL-samples: it decides what to keep AFTER seeing the finished
+# trace (unlike head sampling, which guesses at the start).
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  tail_sampling:
+    # How long to wait after a trace's first span before deciding — long enough
+    # for all its spans (across services) to arrive. Traces show up in Jaeger
+    # ~this many seconds after they complete.
+    decision_wait: 10s
+    num_traces: 50000
+    # Policies are OR'd: a trace is kept if ANY policy says keep.
+    policies:
+      # 1. ALWAYS keep traces that errored — the ones you actually debug.
+      - name: keep-errors
+        type: status_code
+        status_code:
+          status_codes: [ERROR]
+      # 2. ALWAYS keep slow traces (> 500ms end-to-end).
+      - name: keep-slow
+        type: latency
+        latency:
+          threshold_ms: 500
+      # 3. Of everything else (fast + successful), keep a representative 10%.
+      - name: sample-the-rest
+        type: probabilistic
+        probabilistic:
+          sampling_percentage: 10
+
+exporters:
+  # Forward the KEPT traces to Jaeger's OTLP/gRPC receiver on the Docker network.
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [tail_sampling]
+      exporters: [otlp/jaeger]

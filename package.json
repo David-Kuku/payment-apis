@@ -33,6 +33,7 @@
     "@opentelemetry/auto-instrumentations-node": "^0.55.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.57.0",
     "@opentelemetry/sdk-node": "^0.57.0",
+    "@opentelemetry/sdk-trace-base": "^1.30.0",
     "amqplib": "^0.10.4",
     "bcrypt": "^5.1.1",
     "dotenv": "^16.4.5",

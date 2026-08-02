@@ -15,7 +15,7 @@ services:
       NODE_ENV: development
       # Tracing: which service these spans belong to, and where to send them.
       OTEL_SERVICE_NAME: payment-api
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     ports:
       - "3000:3000"
     depends_on:
@@ -47,7 +47,12 @@ services:
   # The webhook worker: same image as the app, but runs the worker entrypoint
   # instead of the server. Shares the database; reaches the app over the Docker
   # network at http://app:3000. This separate process IS the decoupling.
+  # Legacy Postgres-polling worker, kept for reference. It's behind a compose
+  # PROFILE so `docker compose up` does NOT start it — otherwise it would drain
+  # the same outbox as rabbit-worker and double-deliver. To run it deliberately:
+  #   docker compose --profile polling up -d worker
   worker:
+    profiles: ["polling"]
     build:
       context: .
       dockerfile: Dockerfile
@@ -61,7 +66,7 @@ services:
       SERVICE_NAME: webhook-worker
       NODE_ENV: development
       OTEL_SERVICE_NAME: webhook-worker
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     depends_on:
       postgres:
         condition: service_healthy
@@ -87,7 +92,7 @@ services:
       SERVICE_NAME: rabbit-worker
       NODE_ENV: development
       OTEL_SERVICE_NAME: rabbit-worker
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     depends_on:
       postgres:
         condition: service_healthy
@@ -146,6 +151,19 @@ services:
       - payment_prometheus_data:/prometheus
     ports:
       - "9090:9090" # Prometheus UI (check scrape targets, run PromQL)
+
+  otel-collector:
+    # contrib image — the core collector does NOT include tail_sampling.
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: payment-otel-collector
+    restart: unless-stopped
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./monitoring/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    # No host ports needed — the apps reach it over the Docker network at
+    # otel-collector:4318, and it forwards to jaeger internally.
+    depends_on:
+      - jaeger
 
   jaeger:
     image: jaegertracing/all-in-one:latest
