@@ -60,6 +60,8 @@ services:
       DATABASE_URL: postgres://payment:payment@postgres:5432/payment
       SERVICE_NAME: webhook-worker
       NODE_ENV: development
+      OTEL_SERVICE_NAME: webhook-worker
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
     depends_on:
       postgres:
         condition: service_healthy
@@ -84,6 +86,8 @@ services:
       RABBITMQ_URL: amqp://payment:payment@rabbitmq:5672
       SERVICE_NAME: rabbit-worker
       NODE_ENV: development
+      OTEL_SERVICE_NAME: rabbit-worker
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
     depends_on:
       postgres:
         condition: service_healthy

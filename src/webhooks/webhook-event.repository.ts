@@ -1,3 +1,4 @@
+import { context, propagation } from "@opentelemetry/api";
 import { query, type Executor } from "../db.js";
 
 export interface WebhookEventRow {
@@ -10,6 +11,10 @@ export interface WebhookEventRow {
   attempts: number;
   next_attempt_at: Date;
   last_error: string | null;
+  // The trace context captured at enqueue time (a W3C traceparent carrier),
+  // stored so the worker can continue the original request's trace. jsonb comes
+  // back from pg already parsed into an object.
+  trace_context: Record<string, string> | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -28,14 +33,22 @@ export const webhookEventRepository = {
       payload: unknown;
     },
   ): Promise<void> {
+    // Capture the CURRENT trace context into a plain carrier object. If we're
+    // inside a traced request, this yields { traceparent: "00-<traceId>-<spanId>-01" }.
+    // We persist it so the worker (a different process, later) can resume the
+    // same trace when it publishes/delivers this event.
+    const carrier: Record<string, string> = {};
+    propagation.inject(context.active(), carrier);
+
     await exec.query(
-      `INSERT INTO webhook_events (merchant_id, endpoint_id, event_type, payload)
-       VALUES ($1, $2, $3, $4)`,
+      `INSERT INTO webhook_events (merchant_id, endpoint_id, event_type, payload, trace_context)
+       VALUES ($1, $2, $3, $4, $5)`,
       [
         input.merchantId,
         input.endpointId,
         input.eventType,
         JSON.stringify(input.payload),
+        JSON.stringify(carrier),
       ],
     );
   },
@@ -89,7 +102,8 @@ export const webhookEventRepository = {
          LIMIT $1
        )
        RETURNING id, merchant_id, endpoint_id, event_type, payload, status,
-                 attempts, next_attempt_at, last_error, created_at, updated_at`,
+                 attempts, next_attempt_at, last_error, trace_context,
+                 created_at, updated_at`,
       [limit],
     );
     return result.rows;

@@ -1,3 +1,4 @@
+import { context, propagation } from "@opentelemetry/api";
 import type { Channel, ConfirmChannel } from "amqplib";
 import { pool } from "./db.js";
 import { logger } from "./logger.js";
@@ -58,9 +59,19 @@ async function relayTick(pubChannel: ConfirmChannel): Promise<void> {
         eventType: row.event_type,
         payload: row.payload,
       };
-      pubChannel.publish(EXCHANGE, ROUTING_KEY, Buffer.from(JSON.stringify(message)), {
-        persistent: true,
-        headers: { "x-attempts": 1 },
+      // Resume the trace that started in the API when this event was enqueued.
+      // extract() turns the stored carrier back into a context; publishing WITHIN
+      // it makes amqplib's producer span a child of the original request AND
+      // injects traceparent into the message headers — so the consumer and its
+      // delivery fetch join the very same trace.
+      const parentCtx = row.trace_context
+        ? propagation.extract(context.active(), row.trace_context)
+        : context.active();
+      context.with(parentCtx, () => {
+        pubChannel.publish(EXCHANGE, ROUTING_KEY, Buffer.from(JSON.stringify(message)), {
+          persistent: true,
+          headers: { "x-attempts": 1 },
+        });
       });
     }
     // Wait for the broker to ACK every message before we mark anything published.

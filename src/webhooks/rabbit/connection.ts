@@ -1,5 +1,13 @@
-import amqp from "amqplib";
+import { createRequire } from "node:module";
 import "dotenv/config";
+
+// Same reason as src/db.ts: tsx's ESM loader hides a plain `import amqp from
+// "amqplib"` from OpenTelemetry's require() hook, so amqplib wouldn't be
+// instrumented — no publish/consume spans and, crucially, no automatic
+// traceparent propagation through message headers. Loading it through a real
+// CommonJS require() lets OTel patch it.
+const require = createRequire(import.meta.url);
+const amqp = require("amqplib") as typeof import("amqplib");
 
 const url = process.env.RABBITMQ_URL ?? "amqp://payment:payment@localhost:5672";
 

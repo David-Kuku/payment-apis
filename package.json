@@ -5,11 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch --import ./src/tracing.ts src/index.ts",
-    "worker": "tsx watch src/webhook-worker.ts",
+    "worker": "tsx watch --import ./src/tracing.ts src/webhook-worker.ts",
     "worker:logs": "docker compose logs -f worker",
     "rabbit:setup": "tsx src/webhooks/rabbit/setup.ts",
     "rabbit:setup:docker": "docker compose exec app npm run rabbit:setup",
-    "rabbit:worker": "tsx watch src/rabbit-worker.ts",
+    "rabbit:worker": "tsx watch --import ./src/tracing.ts src/rabbit-worker.ts",
     "rabbit:worker:logs": "docker compose logs -f rabbit-worker",
     "migrate": "tsx src/migrate.ts",
     "up": "docker compose up -d --build",
