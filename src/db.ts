@@ -1,5 +1,14 @@
-import pg from "pg";
+import { createRequire } from "node:module";
+import type { Pool, PoolClient } from "pg";
 import "dotenv/config"; // loads .env into process.env
+
+// tsx's ESM loader bypasses the require() that OpenTelemetry hooks into, so a
+// plain `import pg from "pg"` leaves pg's Client.query un-instrumented — you get
+// pg-pool.connect spans but no pg.query spans. Loading pg through a real
+// CommonJS require() routes it past OTel's hook so the query patch applies.
+// (The `import type` above is erased at runtime — types only.) See src/tracing.ts.
+const require = createRequire(import.meta.url);
+const pg = require("pg") as typeof import("pg");
 
 /**
  * A connection POOL, not a single connection.
@@ -31,7 +40,7 @@ export function query(text: string, params?: unknown[]) {
  * accept an Executor so the SAME method works both standalone and inside a
  * transaction.
  */
-export type Executor = pg.Pool | pg.PoolClient;
+export type Executor = Pool | PoolClient;
 
 /**
  * Run `fn` inside a single database transaction.
@@ -45,7 +54,7 @@ export type Executor = pg.Pool | pg.PoolClient;
  * transaction COMMITs or ROLLBACKs.
  */
 export async function withTransaction<T>(
-  fn: (client: pg.PoolClient) => Promise<T>,
+  fn: (client: PoolClient) => Promise<T>,
 ): Promise<T> {
   const client = await pool.connect();
   try {

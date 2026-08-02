@@ -4,7 +4,7 @@
   "description": "A Stripe-like payment platform, built to learn senior backend engineering.",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch --import ./src/tracing.ts src/index.ts",
     "worker": "tsx watch src/webhook-worker.ts",
     "worker:logs": "docker compose logs -f worker",
     "rabbit:setup": "tsx src/webhooks/rabbit/setup.ts",
@@ -29,6 +29,10 @@
     "db:logs": "docker compose logs -f postgres"
   },
   "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.55.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.57.0",
+    "@opentelemetry/sdk-node": "^0.57.0",
     "amqplib": "^0.10.4",
     "bcrypt": "^5.1.1",
     "dotenv": "^16.4.5",

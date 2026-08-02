@@ -1,5 +1,20 @@
 import pino from "pino";
+import { trace } from "@opentelemetry/api";
 import "dotenv/config";
+
+/**
+ * Runs on EVERY log call. It asks OpenTelemetry "what span is active right now?"
+ * — which OTel tracks in AsyncLocalStorage (a per-request async context). If we're
+ * inside a traced request, we stamp its trace_id/span_id onto the log line. This
+ * is what LINKS logs to traces: copy a trace_id from a log and paste it into
+ * Jaeger's "Lookup by Trace ID" to see the exact request the log came from.
+ */
+function otelMixin() {
+  const span = trace.getActiveSpan();
+  if (!span) return {}; // e.g. logs at startup, before any request
+  const { traceId, spanId } = span.spanContext();
+  return { trace_id: traceId, span_id: spanId };
+}
 
 /**
  * The application logger (pino).
@@ -15,6 +30,9 @@ const isDev = process.env.NODE_ENV !== "production";
 
 export const logger = pino({
   level: process.env.LOG_LEVEL ?? "info",
+
+  // Inject trace_id/span_id into every line (see otelMixin above).
+  mixin: otelMixin,
 
   // BASE FIELDS — attached to every log line. Once the API and the two workers
   // all ship logs to one place, `service` is how you tell whose log is whose.

@@ -13,6 +13,9 @@ services:
       # Inside the network RabbitMQ is at host "rabbitmq", not localhost.
       RABBITMQ_URL: amqp://payment:payment@rabbitmq:5672
       NODE_ENV: development
+      # Tracing: which service these spans belong to, and where to send them.
+      OTEL_SERVICE_NAME: payment-api
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
     ports:
       - "3000:3000"
     depends_on:
@@ -139,6 +142,18 @@ services:
       - payment_prometheus_data:/prometheus
     ports:
       - "9090:9090" # Prometheus UI (check scrape targets, run PromQL)
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: payment-jaeger
+    restart: unless-stopped
+    environment:
+      # Enable the OTLP receivers (gRPC 4317 / HTTP 4318) so our app can ship
+      # spans straight to Jaeger without a separate collector.
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686" # Jaeger UI (the trace waterfall view)
+      - "4318:4318" # OTLP/HTTP receiver (our app posts spans here)
 
   alertmanager:
     image: prom/alertmanager:latest
