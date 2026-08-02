@@ -44,6 +44,28 @@ app.post("/test/sink", (req, res) => {
   res.status(200).json({ received: true });
 });
 
+/**
+ * DEV receiver for Alertmanager. Alertmanager POSTs a JSON batch of alerts here
+ * (grouped). We just log each one so you can SEE a firing alert arrive end-to-end
+ * — in real life this receiver would be Slack/PagerDuty/email instead.
+ */
+app.post("/test/alerts", (req, res) => {
+  const alerts = req.body?.alerts ?? [];
+  for (const a of alerts) {
+    req.log.warn(
+      {
+        status: a.status, // "firing" | "resolved"
+        alertname: a.labels?.alertname,
+        severity: a.labels?.severity,
+        summary: a.annotations?.summary,
+        description: a.annotations?.description,
+      },
+      "🚨 alert received from Alertmanager",
+    );
+  }
+  res.status(200).json({ received: alerts.length });
+});
+
 /** Prometheus scrapes this — renders the registry in its text exposition format. */
 app.get("/metrics", async (_req, res) => {
   res.set("Content-Type", registry.contentType);

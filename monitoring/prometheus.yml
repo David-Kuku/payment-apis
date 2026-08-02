@@ -1,6 +1,21 @@
 # How often Prometheus scrapes, and who it scrapes.
 global:
   scrape_interval: 15s
+  # How often Prometheus RE-EVALUATES the alert rules below. Separate from
+  # scraping: it re-runs each rule's PromQL against already-scraped data.
+  evaluation_interval: 15s
+
+# Files containing alert rules. Prometheus loads and evaluates them.
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+# Where to SEND firing alerts. Prometheus only evaluates rules; Alertmanager
+# decides what to do with the ones that fire. "alertmanager:9093" is the service
+# name on the Docker network.
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
 
 scrape_configs:
   # Scrape our API's /metrics endpoint. "app:3000" is the API on the Docker

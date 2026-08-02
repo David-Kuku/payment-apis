@@ -1,0 +1,23 @@
+# Alertmanager: receives FIRING alerts from Prometheus, then groups, dedupes,
+# throttles, and routes them to a receiver.
+route:
+  # Bundle alerts that share these labels into ONE notification instead of
+  # spamming one message per alert. Here: group everything for the same alertname.
+  group_by: ["alertname"]
+  # Wait a moment after the first alert in a group before sending, so a burst
+  # that fires together arrives as a single notification.
+  group_wait: 10s
+  # If more alerts join an existing group, wait this long before sending an update.
+  group_interval: 30s
+  # Don't re-notify about an alert that's STILL firing more often than this.
+  repeat_interval: 1h
+  # Default destination for anything not matched by a more specific route.
+  receiver: app-webhook
+
+receivers:
+  - name: app-webhook
+    webhook_configs:
+      # Our app on the Docker network. send_resolved also POSTs when an alert
+      # clears, so you see the "resolved" side of the lifecycle too.
+      - url: http://app:3000/test/alerts
+        send_resolved: true

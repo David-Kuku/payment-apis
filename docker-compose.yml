@@ -135,9 +135,19 @@ services:
     restart: unless-stopped
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
       - payment_prometheus_data:/prometheus
     ports:
       - "9090:9090" # Prometheus UI (check scrape targets, run PromQL)
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: payment-alertmanager
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "9093:9093" # Alertmanager UI (see active alerts, silences)
 
   grafana:
     image: grafana/grafana:latest

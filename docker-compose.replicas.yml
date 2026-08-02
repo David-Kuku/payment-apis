@@ -1,0 +1,56 @@
+# DEMO OVERLAY — run WITH the base file to see the `instance` label in action:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.replicas.yml up -d
+#
+# It adds two more app replicas (app2, app3) and swaps Prometheus onto a config
+# that scrapes all three. Your normal `npm run up` is untouched. To tear the
+# extras down: docker compose -f docker-compose.yml -f docker-compose.replicas.yml down
+services:
+  # Same image and wiring as `app`, but no host port (Prometheus reaches it over
+  # the Docker network at app2:3000) and no fixed container_name.
+  app2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://payment:payment@postgres:5432/payment
+      RABBITMQ_URL: amqp://payment:payment@rabbitmq:5672
+      NODE_ENV: development
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src
+      - ./migrations:/app/migrations
+
+  app3:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://payment:payment@postgres:5432/payment
+      RABBITMQ_URL: amqp://payment:payment@rabbitmq:5672
+      NODE_ENV: development
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src
+      - ./migrations:/app/migrations
+
+  # Override just the Prometheus config mount so it scrapes all three instances.
+  prometheus:
+    volumes:
+      - ./monitoring/prometheus.replicas.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - payment_prometheus_data:/prometheus

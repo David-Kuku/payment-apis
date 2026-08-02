@@ -1,0 +1,49 @@
+# Alert rules. Prometheus evaluates these every `evaluation_interval` (set in
+# prometheus.yml). Each rule is a PromQL `expr`; when it returns rows, the alert
+# starts. It stays PENDING until the condition holds continuously for `for:`,
+# then flips to FIRING. `labels` are attached for routing (severity); annotations
+# are human text for the notification.
+groups:
+  - name: payment-api
+    rules:
+      # The API is 5xx-ing. A real user-facing failure — page loudly.
+      - alert: HighErrorRate
+        expr: sum(rate(http_requests_total{status_code=~"5.."}[5m])) > 0.5
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "API returning 5xx errors"
+          description: "5xx rate is {{ $value | printf \"%.2f\" }} req/s over the last 5m (threshold 0.5)."
+
+      # p95 latency past our 200ms goal. Degraded, not down — warn.
+      - alert: HighLatencyP95
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p95 latency above 200ms"
+          description: "p95 is {{ $value | printf \"%.3f\" }}s over the last 5m (goal 0.2s)."
+
+      # Requests are QUEUING for a DB connection — the pool is saturated. This is
+      # the USE 'saturation' signal; if it holds, latency will follow.
+      - alert: DBPoolSaturated
+        expr: db_pool_connections{state="waiting"} > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "DB connection pool saturated"
+          description: "{{ $value }} request(s) waiting for a DB connection for 2m — pool is a bottleneck."
+
+      # Prometheus can't scrape the app at all. `up` is a built-in metric
+      # Prometheus writes per target: 1 = scrape ok, 0 = scrape failed.
+      - alert: TargetDown
+        expr: up{job="payment-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "payment-api scrape target down"
+          description: "Prometheus has failed to scrape {{ $labels.instance }} for 1m."
