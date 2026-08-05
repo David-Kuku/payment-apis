@@ -46,6 +46,13 @@ export const paymentIntentsTotal = new Counter({
   registers: [registry],
 });
 
+export const payoutsTotal = new Counter({
+  name: "payouts_total",
+  help: "Settlement payout lifecycle events",
+  labelNames: ["event"], // created | paid | failed
+  registers: [registry],
+});
+
 // ── USE: the DB connection pool (a resource we contend for) ───────────────────
 // A GAUGE (goes up/down) with a `collect` callback that reads the live pool
 // numbers at SCRAPE time — so Prometheus always sees the current state:

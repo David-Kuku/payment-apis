@@ -10,6 +10,7 @@
     "rabbit:setup": "tsx src/webhooks/rabbit/setup.ts",
     "rabbit:setup:docker": "docker compose exec app npm run rabbit:setup",
     "rabbit:worker": "tsx watch --import ./src/tracing.ts src/rabbit-worker.ts",
+    "settlement:worker": "tsx watch --import ./src/tracing.ts src/settlement-worker.ts",
     "rabbit:worker:logs": "docker compose logs -f rabbit-worker",
     "migrate": "tsx src/migrate.ts",
     "up": "docker compose up -d --build",

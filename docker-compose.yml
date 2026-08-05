@@ -102,6 +102,30 @@ services:
       - ./src:/app/src
       - ./migrations:/app/migrations
 
+  # Scheduled settlement worker: sweeps merchant wallet balances into payouts and
+  # sends them to the bank (simulated). Separate process, same image.
+  settlement-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: payment-settlement-worker
+    restart: unless-stopped
+    command: npm run settlement:worker
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://payment:payment@postgres:5432/payment
+      SERVICE_NAME: settlement-worker
+      NODE_ENV: development
+      OTEL_SERVICE_NAME: settlement-worker
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src
+      - ./migrations:/app/migrations
+
   postgres:
     image: postgres:16
     container_name: payment-postgres

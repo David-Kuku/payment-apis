@@ -1,7 +1,13 @@
 import type { Executor } from "../db.js";
 
 type Direction = "debit" | "credit";
-type TransactionType = "deposit" | "transfer" | "withdrawal" | "charge";
+type TransactionType =
+  | "deposit"
+  | "transfer"
+  | "withdrawal"
+  | "charge"
+  | "payout" // debits a merchant wallet — money leaving to their bank
+  | "payout_reversal"; // credits it back if the payout ultimately fails
 
 /**
  * The ledger repository: SQL for `transactions` and `ledger_entries`.

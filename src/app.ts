@@ -5,6 +5,7 @@ import { authRouter } from "./auth/auth.routes.js";
 import { walletRouter } from "./wallets/wallet.routes.js";
 import { transferRouter } from "./transfers/transfer.routes.js";
 import { paymentRouter } from "./payments/payment.routes.js";
+import { payoutRouter } from "./payouts/payout.routes.js";
 import { webhookRouter } from "./webhooks/webhook.routes.js";
 import { errorHandler } from "./middleware/error-handler.js";
 import { requestLogger } from "./middleware/request-logger.js";
@@ -26,6 +27,7 @@ app.use("/auth", authRouter);
 app.use("/wallets", walletRouter);
 app.use("/transfers", transferRouter);
 app.use("/payment-intents", paymentRouter);
+app.use("/payouts", payoutRouter);
 app.use("/webhooks", webhookRouter);
 
 /** DEV/TEST sink to receive webhook deliveries. ?fail=1 returns 500. */
